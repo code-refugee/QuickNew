@@ -1,4 +1,4 @@
-package com.quicknew.android;
+package com.quicknew.android.db;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;

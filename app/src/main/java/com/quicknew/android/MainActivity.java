@@ -14,6 +14,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.quicknew.android.db.MyDatabaseHelper;
+
 public class MainActivity extends AppCompatActivity {
     private TextView main_register;
     private EditText account;

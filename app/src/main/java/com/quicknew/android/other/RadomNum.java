@@ -1,4 +1,4 @@
-package com.quicknew.android;
+package com.quicknew.android.other;
 
 import java.util.Arrays;
 

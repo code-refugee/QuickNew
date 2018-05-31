@@ -1,7 +1,6 @@
 package com.quicknew.android;
 
 import android.content.ContentValues;
-import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.support.v7.app.AppCompatActivity;
@@ -12,6 +11,9 @@ import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
+
+import com.quicknew.android.db.MyDatabaseHelper;
+import com.quicknew.android.other.RadomNum;
 
 import java.util.ArrayList;
 
