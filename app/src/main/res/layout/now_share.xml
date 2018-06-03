@@ -10,7 +10,6 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:textColor="#fff"
-        android:text="sz00001"
         android:textSize="20sp"/>
 
 </LinearLayout>

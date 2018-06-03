@@ -3,9 +3,12 @@ package com.quicknew.android;
  * Created by yuhang Tao on 2018/5/31.
  *这是一个活动，用于显示股票的信息
  */
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.preference.PreferenceManager;
 import android.support.v4.view.ViewPager;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -21,6 +24,7 @@ import android.widget.Toast;
 
 import com.quicknew.android.adapter.ViewPageAdapter;
 import com.quicknew.android.other.Share;
+import com.quicknew.android.service.AutoUpdate;
 import com.quicknew.android.util.HttpUtil;
 import com.quicknew.android.util.Utility;
 
@@ -72,6 +76,12 @@ public class ContentActivity extends AppCompatActivity {
     //用于实现滑动
     private ViewPager pager;
 
+    //ViewPager中的线性布局
+    LinearLayout layout;
+
+    //下拉刷新控件
+    private SwipeRefreshLayout refresh;
+
     //viewpager的适配器
     private ViewPageAdapter adapter;
 
@@ -80,12 +90,12 @@ public class ContentActivity extends AppCompatActivity {
 
     //suggestion布局中的scrollview
     private ScrollView  suggest_scrool;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_content);
         initView();
-        pager.setAdapter(adapter);
     }
 
     //初始化视图
@@ -97,6 +107,11 @@ public class ContentActivity extends AppCompatActivity {
         share_name=(TextView)findViewById(R.id.share_name);
         shares_layout=(LinearLayout)findViewById(R.id.shares_layout);
         pager=(ViewPager)findViewById(R.id.view_pager);
+        layout=(LinearLayout)findViewById(R.id.ll_details_top_dot);
+        refresh=(SwipeRefreshLayout)findViewById(R.id.swip_refresh);
+        //设置下拉控件是否可伸缩，以及出现和消失的位置
+        refresh.setProgressViewOffset(true,0,200);
+//        refresh.setColorSchemeColors(Color.parseColor("#8000"));
         //得到当前SharedPreferences对象
         SharedPreferences prefs= PreferenceManager.getDefaultSharedPreferences(ContentActivity.this);
         /*这里通过prefs得到的JSON数据*/
@@ -134,24 +149,14 @@ public class ContentActivity extends AppCompatActivity {
 
             }
         });
-        LinearLayout layout=(LinearLayout)findViewById(R.id.ll_details_top_dot);
-        for(int i =0;i<2;i++){
-            dots[i]=(ImageView)layout.getChildAt(i);
-            dots[i].setEnabled(true);
-            //打上标签
-            dots[i].setTag(i);
-            //对点击点的操作进行监听，点到该位置，页面也该改变
-            dots[i].setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    int index = (int) v.getTag();
-                    setDots(index);
-                    setPagers(index);
-                }
-            });
-        }
-        curPager = 0;
-        dots[curPager].setEnabled(false);
+        //对SwipeRefreshLayout实施监听
+        refresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                requestShare();
+            }
+        });
+
     }
 
     /*根据股票的名字获取股市信息*/
@@ -164,6 +169,7 @@ public class ContentActivity extends AppCompatActivity {
         HttpUtil.sendOkHttpRequest(shareUrl, new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
+                //异步任务，在主线程更新UI（UI不能在子线程中跟新，否则出错）
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -180,6 +186,8 @@ public class ContentActivity extends AppCompatActivity {
 
                 //解析股票JSON数据
                 shares=Utility.handleShareResponse(responseText);
+
+                //异步任务，在主线程更新UI（UI不能在子线程中跟新，否则出错）
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -199,6 +207,8 @@ public class ContentActivity extends AppCompatActivity {
                             Toast.makeText(ContentActivity.this,"亲，股票数据不存在"
                             ,Toast.LENGTH_SHORT).show();
                         }
+                        //将下拉刷新的图标消失掉
+                        refresh.setRefreshing(false);
                     }
                 });
             }
@@ -210,6 +220,7 @@ public class ContentActivity extends AppCompatActivity {
         share_name.setText(sharename);
         //清空原先所有的视图
         shares_layout.removeAllViews();
+
         close_price=new double[shares.size()];
         //用于表示close_price数组的下标
         int index=0;
@@ -225,13 +236,19 @@ public class ContentActivity extends AppCompatActivity {
             volumeText.setText(share.getVolume()+"");
             close_price[index]=share.getClose();
             index++;
-            //在另一种方法中初始化滑动窗口，不然代码太长
-            initData();
+            //动态添加视图（包括布局和内容）
             shares_layout.addView(view);
         }
 
+        //在另一种方法中初始化滑动窗口，不然代码太长
+        initData();
+
         //设置可见
         content_layout.setVisibility(View.VISIBLE);
+
+        //激活服务
+        Intent intent=new Intent(this, AutoUpdate.class);
+        startService(intent);
     }
 
     //初始化数据适配器
@@ -249,7 +266,6 @@ public class ContentActivity extends AppCompatActivity {
         high_text.setText(close_price[shares.size()-1]+"");
         low_text.setText(close_price[0]+"");
         views.add(view);
-
         View view1=inflater.inflate(layouts[1],null);
         String suggestion=analyseShare();
         TextView sugg_test1=(TextView)view1.findViewById(R.id.sugg_test1) ;
@@ -272,6 +288,24 @@ public class ContentActivity extends AppCompatActivity {
         sugg_test1.setText(suggestion);
         views.add(view1);
         adapter=new ViewPageAdapter(views);
+        pager.setAdapter(adapter);
+        for(int i =0;i<2;i++){
+            dots[i]=(ImageView)layout.getChildAt(i);
+            dots[i].setEnabled(true);
+            //打上标签
+            dots[i].setTag(i);
+            //对点击点的操作进行监听，点到该位置，页面也该改变
+            dots[i].setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    int index = (int) v.getTag();
+                    setDots(index);
+                    setPagers(index);
+                }
+            });
+        }
+        curPager = 0;
+        dots[curPager].setEnabled(false);
     }
 
     //分析股票给出建议
@@ -305,5 +339,22 @@ public class ContentActivity extends AppCompatActivity {
         if(index<0||index>layouts.length)
             return;
         pager.setCurrentItem(index);
+    }
+
+    //搜索按钮的点击事件
+    public void shareSearch(View view){
+        switch (view.getId()){
+            case R.id.search:
+                String content=search_content.getText().toString().trim();
+                if(content.equals("")){
+                    Toast.makeText(ContentActivity.this,"请输入要搜索的股票名"
+                    ,Toast.LENGTH_SHORT).show();
+                }else{
+                    sharename=content;
+                    //根据股票名查询股票的详细信息
+                    requestShare();
+                    search_content.setText("");
+                }
+        }
     }
 }
