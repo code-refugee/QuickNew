@@ -34,14 +34,18 @@ public class AutoUpdate extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         updateShare();
+        //闹钟管理者,在指定时长后执行某项操作
         AlarmManager manager=(AlarmManager) getSystemService(ALARM_SERVICE);
         //3小时的毫秒数
         int anHour=3*60*60*1000;
+        //计算某个时间经历了多长时间有意义
         long triggerTime= SystemClock.elapsedRealtime()+anHour;
         Intent i=new Intent(this,AutoUpdate.class);
+        //pendingIntent的执行不是立刻的
         PendingIntent pi=PendingIntent.getService(this,0,i,0);
         manager.cancel(pi);
         manager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,triggerTime,pi);
+        //每隔3小时onStartCommand()方法重新执行
         return super.onStartCommand(intent, flags, startId);
     }
 

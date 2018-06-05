@@ -49,6 +49,7 @@ public class Register extends AppCompatActivity {
                 String pass=repassword.getText().toString().trim();
                 String passagain=repasswordagain.getText().toString().trim();
                 String checksex=checked.getText().toString();
+                //用于存放插入表的值
                 ContentValues values=new ContentValues();
                 //若输入为空或两次密码不一致则给出提示
                 if("".equals(pass)||"".equals(passagain))
@@ -62,6 +63,7 @@ public class Register extends AppCompatActivity {
 
                     //第一次执时，创建数据库数据表，若已存在数据库数据表时，不会再次创建，只会与其创建连接
                     dbHelper=new MyDatabaseHelper(Register.this,"User.db",null,1);
+                    //自动执行onCreate()方法创建数据库
                     SQLiteDatabase db=dbHelper.getReadableDatabase();
 
                     //查询user表中所有的数据
@@ -84,6 +86,7 @@ public class Register extends AppCompatActivity {
                     values.put("account",useacount);
                     values.put("password",pass);
                     values.put("sex",checksex);
+                    //执行插入操作，对User表插入values
                     db.insert("User",null,values);
                     values.clear();
                     Toast.makeText(Register.this,"注册成功，你的用户名为"
